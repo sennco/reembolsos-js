@@ -6,23 +6,24 @@ const expenseList = document.querySelector('ul');
 const sizeList = document.querySelector('aside header p span');
 const totalValue = document.querySelector('aside header h2');
 
+// Formata o valor enquanto o usuário digita
 amount.oninput = () => {
     let value = amount.value.replace(/\D/g, '');
 
     value = Number(value) / 100;
 
     amount.value = formatCurrencyBRL(value);
-}
+};
 
+// Função para formatar valores para BRL (R$)
 function formatCurrencyBRL(value) {
-    value = value.toLocaleString('pt-BR', {
+    return value.toLocaleString('pt-BR', {
         style: 'currency',
         currency: 'BRL'
     });
-
-    return value;
 }
 
+// Evento de envio do formulário
 form.onsubmit = (e) => {
     e.preventDefault();
 
@@ -33,17 +34,23 @@ form.onsubmit = (e) => {
         category_name: category.options[category.selectedIndex].text,
         amount: amount.value,
         created_at: new Date().toLocaleString()
-    }
+    };
 
-    console.log(newExpense);
+    // Recupera as despesas do localStorage e adiciona a nova
+    const despesas = JSON.parse(localStorage.getItem('despesas')) || [];
+    despesas.push(newExpense);
+    localStorage.setItem('despesas', JSON.stringify(despesas));
 
     expenseAdd(newExpense);
-}
+    clearFields();
+};
 
+// Função para adicionar um item à lista de despesas
 function expenseAdd(newExpense) {
     try {
         const expenseItem = document.createElement('li');
-        expenseItem.classList.add("expense")
+        expenseItem.classList.add("expense");
+        expenseItem.setAttribute('data-id', newExpense.id); // Para identificar ao remover
 
         const expenseIcon = document.createElement('img');
         expenseIcon.setAttribute('src', `./img/${newExpense.category_id}.svg`);
@@ -66,13 +73,8 @@ function expenseAdd(newExpense) {
         removeExpense.setAttribute('alt', 'Remover despesa');
 
         expenseItem.append(expenseIcon, expenseInfo, expenseAmount, removeExpense);
-
         expenseList.append(expenseItem);
 
-        const despesas =  localStorage.setItem(newExpense.id, JSON.stringify(newExpense));
-     
-
-        clearFields();
         updateTotal();
     } catch (error) {
         alert('Erro ao adicionar despesa');
@@ -80,12 +82,10 @@ function expenseAdd(newExpense) {
     }
 }
 
+// Função para atualizar o total de despesas
 function updateTotal() {
     try {
         const items = expenseList.children;
-        console.log(items);
-
-        console.log(items.length);
 
         sizeList.textContent = `${items.length} ${items.length > 1 ? 'despesas' : 'despesa'}`;
 
@@ -102,8 +102,7 @@ function updateTotal() {
                 return alert('Erro ao calcular total');
             }
 
-            total += Number(value);
-            console.log(total);
+            total += value;
         }
 
         const symbolBRL = document.createElement('small');
@@ -112,24 +111,47 @@ function updateTotal() {
         total = formatCurrencyBRL(total).toUpperCase().replace('R$', '');
 
         totalValue.innerHTML = "";
-
         totalValue.append(symbolBRL, total);
     } catch {
         alert('Erro ao atualizar total');
     }
 }
 
+// Função para carregar despesas do localStorage ao iniciar
+function loadExpenses() {
+    const despesas = JSON.parse(localStorage.getItem('despesas')) || [];
+
+    despesas.forEach(expense => {
+        expenseAdd(expense);
+    });
+
+    updateTotal();
+}
+
+// Remover despesa da lista e do localStorage
 expenseList.addEventListener('click', (e) => {
     if (e.target.classList.contains('remove-icon')) {
-        e.target.parentElement.remove();
+        const expenseItem = e.target.parentElement;
+        const expenseId = expenseItem.getAttribute('data-id');
+
+        // Remove do localStorage
+        let despesas = JSON.parse(localStorage.getItem('despesas')) || [];
+        despesas = despesas.filter(expense => expense.id.toString() !== expenseId);
+        localStorage.setItem('despesas', JSON.stringify(despesas));
+
+        // Remove do DOM
+        expenseItem.remove();
         updateTotal();
     }
 });
 
-function clearFields (){
+// Função para limpar os campos do formulário após adicionar despesa
+function clearFields() {
     amount.value = '';
     expense.value = '';
     category.value = '';
-
     expense.focus();
 }
+
+// Carregar despesas ao iniciar a página
+document.addEventListener('DOMContentLoaded', loadExpenses);
